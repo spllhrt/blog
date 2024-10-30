@@ -1,8 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors'); 
+const cloudinary = require('cloudinary').v2; 
+
 require('dotenv').config(); 
 
-const userRoutes = require('./routes/auth')
+const userRoutes = require('./routes/auth');
+const categoryRoutes = require('./routes/category');
 
 const app = express();
 
@@ -12,13 +16,26 @@ mongoose.connect(uri)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.log('Error connecting to MongoDB:', err));
 
+// Use CORS middleware
+app.use(cors({
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+})
+
 app.use(express.json());
 
-// app.get('/', (req, res) => {
-//   res.send('Hello, World!');
-// });
 
-app.use('/api/auth', userRoutes )
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.use('/api/auth', userRoutes);
+app.use('/api/', categoryRoutes); 
 
 const PORT = process.env.PORT || 5000;
 
