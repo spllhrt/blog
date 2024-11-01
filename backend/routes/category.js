@@ -17,7 +17,7 @@ router.get('/category/:id', getSingleCategory);
 router.get('/admin/categories', getAdminCategories);
 router.route('/admin/category/:id')
     .delete(deleteCategory)
-    .patch(upload.array('images', 10), updateCategory); // Add upload middleware here
+    .put(upload.array('images', 10), updateCategory); // Add upload middleware here
 
 router.post('/admin/category/new', upload.array('images', 10), newCategory);
 

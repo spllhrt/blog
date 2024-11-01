@@ -7,6 +7,10 @@ require('dotenv').config();
 
 const userRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/category');
+const packageRoutes = require('./routes/package');
+const reviewRoutes = require('./routes/reviews');
+const responseRoutes = require('./routes/response');
+const pbookingRoutes = require('./routes/pbooking');
 
 const app = express();
 
@@ -16,10 +20,9 @@ mongoose.connect(uri)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.log('Error connecting to MongoDB:', err));
 
-// Use CORS middleware
 app.use(cors({
     origin: 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
 }));
 
 cloudinary.config({
@@ -36,6 +39,11 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use('/api/auth', userRoutes);
 app.use('/api/', categoryRoutes); 
+app.use('/api/', packageRoutes); 
+app.use('/api/', reviewRoutes);
+app.use('/api/', responseRoutes); 
+app.use('/api/', pbookingRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,73 +1,73 @@
-const Category = require('../models/category')
+const Package = require('../models/package')
 const cloudinary = require('cloudinary')
 const APIFeatures = require('../utils/apiFeatures');
 
-exports.getCategories = async (req, res) => {
+exports.getPackages = async (req, res) => {
     const resPerPage = 4;
-    const categoriesCount = await Category.countDocuments();
-    const apiFeatures = new APIFeatures(Category.find(), req.query).search().filter();
+    const packagesCount = await Package.countDocuments();
+    const apiFeatures = new APIFeatures(Package.find(), req.query).search().filter();
     apiFeatures.pagination(resPerPage);
-    const categories = await apiFeatures.query;
-    let filteredCategoryCount = categories.length;
+    const packages = await apiFeatures.query;
+    let filteredPackageCount = packages.length;
 
-	if (!categories) 
-        return res.status(400).json({message: 'error loading categories'})
+	if (!packages) 
+        return res.status(400).json({message: 'error loading packages'})
    return res.status(200).json({
         success: true,
-        categories,
-		filteredCategoryCount,
+        packages,
+		filteredPackageCount,
 		resPerPage,
-		categoriesCount,
+		packagesCount,
 		
 	})
 }
 
-exports.getSingleCategory = async (req, res, next) => {
-	const category = await Category.findById(req.params.id);
-	if (!category) {
+exports.getSinglePackage = async (req, res, next) => {
+	const package = await Package.findById(req.params.id);
+	if (!package) {
 		return res.status(404).json({
 			success: false,
-			message: 'Category not found'
+			message: 'Package not found'
 		})
 	}
 	return res.status(200).json({
 		success: true,
-		category
+		package
 	})
 }
 
-exports.getAdminCategories = async (req, res, next) => {
+exports.getAdminPackage = async (req, res, next) => {
 
-	const categories = await Category.find();
-	if (!categories) {
+	const packages = await Package.find();
+	if (!packages) {
 		return res.status(404).json({
 			success: false,
-			message: 'Category not found'
+			message: 'Package not found'
 		})
 	}
 	return res.status(200).json({
 		success: true,
-		categories
+		packages
 	})
 
 }
 
-exports.deleteCategory = async (req, res, next) => {
-	const category = await Category.findByIdAndDelete(req.params.id);
-	if (!category) {
+exports.deletePackage = async (req, res, next) => {
+	const package = await Package.findByIdAndDelete(req.params.id);
+	if (!package) {
 		return res.status(404).json({
 			success: false,
-			message: 'Category not found'
+			message: 'Package not found'
 		})
 	}
 
 	return res.status(200).json({
 		success: true,
-		message: 'Category deleted'
+		message: 'Package deleted'
 	})
 }
 
-exports.newCategory = async (req, res, next) => {
+exports.newPackage = async (req, res, next) => {
     let images = [];
 
     if (req.files) {
@@ -84,7 +84,7 @@ exports.newCategory = async (req, res, next) => {
     for (let i = 0; i < images.length; i++) {
         try {
             const result = await cloudinary.uploader.upload(images[i], {
-                folder: 'categories', 
+                folder: 'packages', 
                 width: 150,
                 crop: "scale",
             });
@@ -105,46 +105,54 @@ exports.newCategory = async (req, res, next) => {
 
     req.body.images = imagesLinks; 
 
-    const category = await Category.create(req.body);
+    const package = await Package.create(req.body);
 
-    if (!category) {
+    if (!package) {
         return res.status(400).json({
             success: false,
-            message: 'Category not created'
+            message: 'Package not created'
         });
     }
 
     return res.status(201).json({
         success: true,
-        category
+        package
     });
 };
 
-
-exports.updateCategory = async (req, res) => {
+exports.updatePackage = async (req, res) => {
     try {
-        let category = await Category.findById(req.params.id);
-        if (!category) {
+        let package = await Package.findById(req.params.id);
+        if (!package) {
             return res.status(404).json({
                 success: false,
-                message: 'Category not found',
+                message: 'Package not found',
             });
         }
 
-        if (req.body.name) {
-            category.name = req.body.name;
+        const updateFields = ['name', 'description', 'price', 'startDate', 'endDate', 'locations', 'features', 'status', 'stocks'];
+
+        updateFields.forEach(field => {
+            if (req.body[field]) {
+                package[field] = req.body[field];
+            }
+        });
+
+        // Update availableDates if provided in the request
+        if (req.body.availableDates) {
+            package.availableDates = req.body.availableDates; // Replace the entire array
         }
 
         let imagesLinks = [];
 
         if (req.files && req.files.length > 0) {
-            for (const image of category.images) {
+            for (const image of package.images) {
                 await cloudinary.uploader.destroy(image.public_id);
             }
 
             for (const file of req.files) {
                 const result = await cloudinary.uploader.upload(file.path, {
-                    folder: 'categories',
+                    folder: 'packages',
                     width: 150,
                     crop: "scale",
                 });
@@ -153,20 +161,21 @@ exports.updateCategory = async (req, res) => {
                     url: result.secure_url,
                 });
             }
+            package.images = imagesLinks;
         } else {
-            imagesLinks = category.images;
+            imagesLinks = package.images;
         }
 
-        category.images = imagesLinks;
+        package.lastUpdated = Date.now();
 
-        await category.save();
+        await package.save();
 
         return res.status(200).json({
             success: true,
-            category,
+            package,
         });
     } catch (error) {
-        console.error('Update category error:', error);
+        console.error('Update package error:', error);
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
