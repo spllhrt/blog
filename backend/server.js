@@ -11,6 +11,7 @@ const packageRoutes = require('./routes/package');
 const reviewRoutes = require('./routes/reviews');
 const responseRoutes = require('./routes/response');
 const pbookingRoutes = require('./routes/pbooking');
+const wishlistRoutes = require('./routes/wishlist');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/', packageRoutes);
 app.use('/api/', reviewRoutes);
 app.use('/api/', responseRoutes); 
 app.use('/api/', pbookingRoutes);
+app.use('/api/', wishlistRoutes);
 
 
 const PORT = process.env.PORT || 5000;
