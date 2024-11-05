@@ -1,5 +1,5 @@
-const Package = require('../models/package')
-const cloudinary = require('cloudinary')
+const Package = require('../models/package');
+const cloudinary = require('cloudinary');
 const APIFeatures = require('../utils/apiFeatures');
 
 exports.getPackages = async (req, res) => {
@@ -10,66 +10,74 @@ exports.getPackages = async (req, res) => {
     const packages = await apiFeatures.query;
     let filteredPackageCount = packages.length;
 
-	if (!packages) 
-        return res.status(400).json({message: 'error loading packages'})
-   return res.status(200).json({
+    if (!packages) 
+        return res.status(400).json({message: 'Error loading packages'});
+    
+    return res.status(200).json({
         success: true,
         packages,
-		filteredPackageCount,
-		resPerPage,
-		packagesCount,
-		
-	})
-}
+        filteredPackageCount,
+        resPerPage,
+        packagesCount,
+    });
+};
 
 exports.getSinglePackage = async (req, res, next) => {
-	const package = await Package.findById(req.params.id);
-	if (!package) {
-		return res.status(404).json({
-			success: false,
-			message: 'Package not found'
-		})
-	}
-	return res.status(200).json({
-		success: true,
-		package
-	})
-}
+    const package = await Package.findById(req.params.id);
+    if (!package) {
+        return res.status(404).json({
+            success: false,
+            message: 'Package not found'
+        });
+    }
+    return res.status(200).json({
+        success: true,
+        package
+    });
+};
 
 exports.getAdminPackage = async (req, res, next) => {
-
-	const packages = await Package.find();
-	if (!packages) {
-		return res.status(404).json({
-			success: false,
-			message: 'Package not found'
-		})
-	}
-	return res.status(200).json({
-		success: true,
-		packages
-	})
-
-}
+    const packages = await Package.find();
+    if (!packages) {
+        return res.status(404).json({
+            success: false,
+            message: 'Packages not found'
+        });
+    }
+    return res.status(200).json({
+        success: true,
+        packages
+    });
+};
 
 exports.deletePackage = async (req, res, next) => {
-	const package = await Package.findByIdAndDelete(req.params.id);
-	if (!package) {
-		return res.status(404).json({
-			success: false,
-			message: 'Package not found'
-		})
-	}
+    const package = await Package.findByIdAndDelete(req.params.id);
+    if (!package) {
+        return res.status(404).json({
+            success: false,
+            message: 'Package not found'
+        });
+    }
 
-	return res.status(200).json({
-		success: true,
-		message: 'Package deleted'
-	})
-}
+    return res.status(200).json({
+        success: true,
+        message: 'Package deleted'
+    });
+};
 
 exports.newPackage = async (req, res, next) => {
     let images = [];
+    
+    // Ensure categoryId is provided
+    const { categoryId } = req.body;
+    if (!categoryId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Category ID is required'
+        });
+    }
 
+    // Handle image uploads
     if (req.files) {
         images = req.files.map(file => file.path); 
     } else if (typeof req.body.images === 'string') {
@@ -80,7 +88,7 @@ exports.newPackage = async (req, res, next) => {
 
     let imagesLinks = [];
 
-    
+    // Upload images to Cloudinary
     for (let i = 0; i < images.length; i++) {
         try {
             const result = await cloudinary.uploader.upload(images[i], {
@@ -103,7 +111,9 @@ exports.newPackage = async (req, res, next) => {
         }
     }
 
+    // Create new package with category reference
     req.body.images = imagesLinks; 
+    req.body.category = categoryId; // Set the category ID
 
     const package = await Package.create(req.body);
 
@@ -130,7 +140,7 @@ exports.updatePackage = async (req, res) => {
             });
         }
 
-        const updateFields = ['name', 'description', 'price', 'startDate', 'endDate', 'locations', 'features', 'status', 'stocks'];
+        const updateFields = ['name', 'description', 'price', 'availableDates', 'locations', 'features', 'status'];
 
         updateFields.forEach(field => {
             if (req.body[field]) {
@@ -138,18 +148,15 @@ exports.updatePackage = async (req, res) => {
             }
         });
 
-        // Update availableDates if provided in the request
-        if (req.body.availableDates) {
-            package.availableDates = req.body.availableDates; // Replace the entire array
-        }
-
         let imagesLinks = [];
 
         if (req.files && req.files.length > 0) {
+            // Destroy old images from Cloudinary
             for (const image of package.images) {
                 await cloudinary.uploader.destroy(image.public_id);
             }
 
+            // Upload new images
             for (const file of req.files) {
                 const result = await cloudinary.uploader.upload(file.path, {
                     folder: 'packages',
@@ -161,13 +168,11 @@ exports.updatePackage = async (req, res) => {
                     url: result.secure_url,
                 });
             }
-            package.images = imagesLinks;
-        } else {
-            imagesLinks = package.images;
+            package.images = imagesLinks; // Update images
         }
 
+        // Save changes to the package
         package.lastUpdated = Date.now();
-
         await package.save();
 
         return res.status(200).json({

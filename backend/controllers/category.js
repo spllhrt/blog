@@ -1,89 +1,90 @@
-const Category = require('../models/category')
-const cloudinary = require('cloudinary')
+const Category = require('../models/category');
+const cloudinary = require('cloudinary');
 const APIFeatures = require('../utils/apiFeatures');
 
 exports.getCategories = async (req, res) => {
-    const resPerPage = 4;
-    const categoriesCount = await Category.countDocuments();
+    const resPerPage = 4;  // Set the number of categories per page
     const apiFeatures = new APIFeatures(Category.find(), req.query).search().filter();
+
+    // Count total categories after applying search/filter
+    const categoriesCount = await apiFeatures.query.countDocuments();
+
+    // Apply pagination
     apiFeatures.pagination(resPerPage);
     const categories = await apiFeatures.query;
-    let filteredCategoryCount = categories.length;
 
-	if (!categories) 
-        return res.status(400).json({message: 'error loading categories'})
-   return res.status(200).json({
+    if (!categories) 
+        return res.status(400).json({ message: 'Error loading categories' });
+
+    return res.status(200).json({
         success: true,
         categories,
-		filteredCategoryCount,
-		resPerPage,
-		categoriesCount,
-		
-	})
-}
+        filteredCategoryCount: categoriesCount, // Return the total count for pagination
+        resPerPage,
+        categoriesCount: categories.length // This will return the number of categories on the current page
+    });
+};
+
 
 exports.getSingleCategory = async (req, res, next) => {
-	const category = await Category.findById(req.params.id);
-	if (!category) {
-		return res.status(404).json({
-			success: false,
-			message: 'Category not found'
-		})
-	}
-	return res.status(200).json({
-		success: true,
-		category
-	})
-}
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+        return res.status(404).json({
+            success: false,
+            message: 'Category not found'
+        });
+    }
+    return res.status(200).json({
+        success: true,
+        category
+    });
+};
 
 exports.getAdminCategories = async (req, res, next) => {
-
-	const categories = await Category.find();
-	if (!categories) {
-		return res.status(404).json({
-			success: false,
-			message: 'Category not found'
-		})
-	}
-	return res.status(200).json({
-		success: true,
-		categories
-	})
-
-}
+    const categories = await Category.find();
+    if (!categories) {
+        return res.status(404).json({
+            success: false,
+            message: 'Category not found'
+        });
+    }
+    return res.status(200).json({
+        success: true,
+        categories
+    });
+};
 
 exports.deleteCategory = async (req, res, next) => {
-	const category = await Category.findByIdAndDelete(req.params.id);
-	if (!category) {
-		return res.status(404).json({
-			success: false,
-			message: 'Category not found'
-		})
-	}
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+        return res.status(404).json({
+            success: false,
+            message: 'Category not found'
+        });
+    }
 
-	return res.status(200).json({
-		success: true,
-		message: 'Category deleted'
-	})
-}
+    // Delete all associated images from Cloudinary
+    for (const image of category.images) {
+        await cloudinary.uploader.destroy(image.public_id);
+    }
+
+    await category.remove();
+
+    return res.status(200).json({
+        success: true,
+        message: 'Category deleted'
+    });
+};
 
 exports.newCategory = async (req, res, next) => {
-    let images = [];
-
-    if (req.files) {
-        images = req.files.map(file => file.path); 
-    } else if (typeof req.body.images === 'string') {
-        images.push(req.body.images);
-    } else {
-        images = req.body.images || [];
-    }
+    let images = req.files || [];
 
     let imagesLinks = [];
 
-    
+    // Upload each image to Cloudinary
     for (let i = 0; i < images.length; i++) {
         try {
-            const result = await cloudinary.uploader.upload(images[i], {
+            const result = await cloudinary.uploader.upload(images[i].path, {
                 folder: 'categories', 
                 width: 150,
                 crop: "scale",
@@ -103,7 +104,7 @@ exports.newCategory = async (req, res, next) => {
         }
     }
 
-    req.body.images = imagesLinks; 
+    req.body.images = imagesLinks;
 
     const category = await Category.create(req.body);
 
@@ -119,7 +120,6 @@ exports.newCategory = async (req, res, next) => {
         category
     });
 };
-
 
 exports.updateCategory = async (req, res) => {
     try {
@@ -138,10 +138,12 @@ exports.updateCategory = async (req, res) => {
         let imagesLinks = [];
 
         if (req.files && req.files.length > 0) {
+            // Delete old images from Cloudinary
             for (const image of category.images) {
                 await cloudinary.uploader.destroy(image.public_id);
             }
 
+            // Upload new images to Cloudinary
             for (const file of req.files) {
                 const result = await cloudinary.uploader.upload(file.path, {
                     folder: 'categories',
@@ -154,7 +156,7 @@ exports.updateCategory = async (req, res) => {
                 });
             }
         } else {
-            imagesLinks = category.images;
+            imagesLinks = category.images; // Keep the old images if no new images are uploaded
         }
 
         category.images = imagesLinks;

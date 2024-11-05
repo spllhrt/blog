@@ -13,10 +13,6 @@ const packageSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Please enter package price'],
     },
-    stocks: {
-        type: Number,
-        required: [true, 'Please enter package stocks'],
-    },
     availableDates: [
         {
             startDate: {
@@ -61,12 +57,7 @@ const packageSchema = new mongoose.Schema({
                 required: true,
             },
         },
-    ],
-    category: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
-        required: [true, 'Please enter category'],
-    },
+    ]
 }, {
     timestamps: true, // Automatically creates createdAt and updatedAt fields
 });

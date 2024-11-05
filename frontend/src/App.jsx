@@ -9,6 +9,7 @@ import Register from './Components/User/Register';
 import Category from './Components/CRUD/Category';
 import Package from './Components/CRUD/Package';
 import User from './Components/CRUD/User';
+import Review from './Components/CRUD/Review';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/category" element={<Category />} exact="true" />
           <Route path="/package" element={<Package />} exact="true" />
           <Route path="/user" element={<User />} exact="true" />
+          <Route path="/review" element={<Review />} exact="true" />
         </Routes>
       </Router>
 

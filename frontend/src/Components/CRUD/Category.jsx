@@ -3,53 +3,30 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import MUIDataTable from "mui-datatables";
 import MetaData from '../Layout/MetaData';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
-    const [category, setCategory] = useState({});
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [selectedCategories, setSelectedCategories] = useState([]);
     const [newCategory, setNewCategory] = useState({ name: '', images: [] });
     const [updateMode, setUpdateMode] = useState(false);
-    const [viewMode, setViewMode] = useState(false); // New state for view mode
+    const [modalShow, setModalShow] = useState(false);
+    const [category, setCategory] = useState({});
     const navigate = useNavigate();
     const { id } = useParams();
-    const [modalShow, setModalShow] = useState(false); // State for controlling modal visibility
 
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/categories'); // Update to match the correct route
+                const res = await axios.get('http://localhost:5000/api/admin/categories');
                 setCategories(res.data.categories);
-                setLoading(false);
             } catch (err) {
-                setError('Error loading categories');
-                setLoading(false);
+                toast.error('Error loading categories');
             }
         };
-
         fetchCategories();
     }, []);
-
-    useEffect(() => {
-        if (id) {
-            fetchCategoryDetails(id);
-        }
-    }, [id]);
-
-    const fetchCategoryDetails = async (id) => {
-        try {
-            const res = await axios.get(`http://localhost:5000/api/category/${id}`); // Update to match the correct route
-            setCategory(res.data.category);
-            setUpdateMode(true);
-            setViewMode(false); // Reset view mode
-            setModalShow(true); // Show modal when editing or viewing a category
-        } catch (err) {
-            setError('Category not found');
-        }
-    };
 
     const handleNewCategory = async (e) => {
         e.preventDefault();
@@ -63,13 +40,13 @@ const Categories = () => {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-            }); // Update to match the correct route
+            });
             setCategories([...categories, res.data.category]);
             toast.success('Category created successfully');
             setNewCategory({ name: '', images: [] });
-            setModalShow(false); // Hide modal after successful addition
+            setModalShow(false);
         } catch (err) {
-            setError('Error creating category');
+            toast.error('Error creating category');
         }
     };
 
@@ -77,152 +54,164 @@ const Categories = () => {
         e.preventDefault();
         const formData = new FormData();
         formData.append('name', category.name);
-        category.images.forEach((image) => {
-            formData.append('images', image);
-        });
+        
+        if (category.images) {
+            category.images.forEach((image) => {
+                formData.append('images', image);
+            });
+        }
+        
         try {
             const res = await axios.put(`http://localhost:5000/api/admin/category/${category._id}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-            }); // Update to match the correct route
+            });
             setCategories(categories.map(cat => (cat._id === res.data.category._id ? res.data.category : cat)));
             toast.success('Category updated successfully');
             setUpdateMode(false);
             setCategory({});
-            setModalShow(false); // Hide modal after successful update
+            setModalShow(false);
         } catch (err) {
-            setError('Error updating category');
+            toast.error('Error updating category');
         }
     };
+    
 
-    const handleDeleteCategory = async (id) => {
+    const handleDeleteCategories = async (rowsDeleted) => {
         try {
-            await axios.delete(`http://localhost:5000/api/admin/category/${id}`); // Update to match the correct route
-            setCategories(categories.filter(cat => cat._id !== id));
-            toast.success('Category deleted successfully');
+            // Get the IDs of the selected rows from the rowsDeleted parameter
+            const idsToDelete = rowsDeleted.data.map(row => categories[row.dataIndex]._id);
+            
+            // Delete categories from the backend
+            await Promise.all(idsToDelete.map(id => axios.delete(`http://localhost:5000/api/admin/category/${id}`)));
+            
+            // Update the state by filtering out the deleted categories
+            setCategories(categories.filter(cat => !idsToDelete.includes(cat._id)));
+            
+            // Show success toast
+            toast.success('Selected categories deleted successfully');
         } catch (err) {
-            setError('Error deleting category');
+            toast.error('Error deleting categories');
         }
     };
+    
 
-    const handleViewCategory = (cat) => {
-        setCategory(cat);
-        setUpdateMode(false);
-        setViewMode(true);
-        setModalShow(true);
+    const handleEditCategory = (id) => {
+        const selectedCategory = categories.find(cat => cat._id === id);
+        if (selectedCategory) {
+            setCategory(selectedCategory);
+            setUpdateMode(true);
+            setModalShow(true);
+        }
     };
+    
+    const columns = [
+        { name: "name", label: "Category Name" },
+        { 
+            name: "images", 
+            label: "Images",
+            options: {
+                customBodyRender: (images) => (
+                    images.map((img, index) => (
+                        <img key={index} src={img.url} alt="category" style={{ width: '50px', height: '50px', marginRight: '5px' }} />
+                    ))
+                )
+            }
+        },
+        {
+            name: "edit",
+            label: "Edit",
+            options: {
+                customBodyRender: (_, tableMeta) => (
+                    <button 
+                        className="btn btn-primary btn-sm"
+                        onClick={() => handleEditCategory(categories[tableMeta.rowIndex]._id)}
+                    >
+                        Edit
+                    </button>
+                )
+            }
+        }
+        
+    ];
+    
 
-    if (loading) return <div>Loading...</div>;
+    const options = {
+        filter: false,
+        selectableRows: "multiple",
+        onRowSelectionChange: (currentRowsSelected, allRowsSelected) => {
+            const ids = allRowsSelected.map(row => categories[row.dataIndex]._id);
+            setSelectedCategories(ids);
+        },
+        onRowsDelete: handleDeleteCategories,
+    };
 
     return (
         <>
             <MetaData title="Categories" />
             <div className="container mt-5">
                 <h1 className="mb-4">Categories</h1>
-                <button className="btn btn-primary mb-4" onClick={() => { setNewCategory({ name: '', images: [] }); setUpdateMode(false); setViewMode(false); setModalShow(true); }}>
+                <button className="btn btn-primary mb-4" onClick={() => { setNewCategory({ name: '', images: [] }); setUpdateMode(false); setModalShow(true); }}>
                     Add New Category
                 </button>
-                {error && <div className="alert alert-danger">{error}</div>}
-                <table className="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Category Name</th>
-                            <th scope="col">Image</th>
-                            <th scope="col">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {categories.map(cat => (
-                            <tr key={cat._id}>
-                                <td>{cat.name}</td>
-                                <td>
-                                    {cat.images[0] && (
-                                        <img src={cat.images[0]?.url} alt={cat.name} style={{ width: '100px', height: '100px' }} />
-                                    )}
-                                </td>
-                                <td>
-                                    <button className="btn btn-info mr-2" onClick={() => handleViewCategory(cat)}>View</button>
-                                    <button className="btn btn-warning mr-2" onClick={() => { fetchCategoryDetails(cat._id); }}>Edit</button>
-                                    <button className="btn btn-danger" onClick={() => handleDeleteCategory(cat._id)}>Delete</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <MUIDataTable
+                    title={"Category List"}
+                    data={categories}
+                    columns={columns}
+                    options={options}
+                />
 
-                {/* Modal for Add/Edit/View Category */}
-                <div className={`modal fade ${modalShow ? 'show' : ''}`} style={{ display: modalShow ? 'block' : 'none' }} tabIndex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden={!modalShow}>
-                    <div className="modal-dialog" role="document">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title" id="exampleModalLabel">{viewMode ? 'View Category' : (updateMode ? 'Edit Category' : 'Add New Category')}</h5>
-                                <button type="button" className="close" onClick={() => setModalShow(false)} aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <form onSubmit={updateMode ? handleUpdateCategory : handleNewCategory}>
-                                <div className="modal-body">
-                                    {viewMode ? (
-                                        <>
-                                            <div className="form-group">
-                                                <label>Category Name</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={category.name}
-                                                    readOnly
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Image</label>
-                                                {category.images[0] && (
-                                                    <img src={category.images[0]?.url} alt={category.name} style={{ width: '100px', height: '100px' }} />
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="form-group">
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={updateMode ? category.name : newCategory.name}
-                                                    onChange={(e) => updateMode ? setCategory({ ...category, name: e.target.value }) : setNewCategory({ ...newCategory, name: e.target.value })}
-                                                    placeholder="Category Name"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <input
-                                                    type="file"
-                                                    className="form-control-file"
-                                                    onChange={(e) => {
-                                                        const files = Array.from(e.target.files);
-                                                        if (updateMode) {
-                                                            setCategory({ ...category, images: files });
-                                                        } else {
-                                                            setNewCategory({ ...newCategory, images: files });
-                                                        }
-                                                    }}
-                                                    multiple
-                                                />
-                                            </div>
-                                        </>
-                                    )}
+                {/* Modal for Add/Edit Category */}
+                {modalShow && (
+                    <div className={`modal fade show`} style={{ display: 'block' }} tabIndex="-1">
+                        <div className="modal-dialog" role="document">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">{updateMode ? 'Edit Category' : 'Add New Category'}</h5>
+                                    <button type="button" className="close" onClick={() => setModalShow(false)} aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
                                 </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setModalShow(false)}>Close</button>
-                                    {!viewMode && (
+                                <form onSubmit={updateMode ? handleUpdateCategory : handleNewCategory}>
+                                    <div className="modal-body">
+                                        <div className="form-group">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={updateMode ? category.name : newCategory.name}
+                                                onChange={(e) => updateMode ? setCategory({ ...category, name: e.target.value }) : setNewCategory({ ...newCategory, name: e.target.value })}
+                                                placeholder="Category Name"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <input
+                                                type="file"
+                                                className="form-control-file"
+                                                onChange={(e) => {
+                                                    const files = Array.from(e.target.files);
+                                                    if (updateMode) {
+                                                        setCategory({ ...category, images: files });
+                                                    } else {
+                                                        setNewCategory({ ...newCategory, images: files });
+                                                    }
+                                                }}
+                                                multiple
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button type="button" className="btn btn-secondary" onClick={() => setModalShow(false)}>Close</button>
                                         <button type="submit" className="btn btn-primary">
                                             {updateMode ? 'Update Category' : 'Add Category'}
                                         </button>
-                                    )}
-                                </div>
-                            </form>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </>
     );
