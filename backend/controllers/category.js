@@ -3,13 +3,11 @@ const cloudinary = require('cloudinary');
 const APIFeatures = require('../utils/apiFeatures');
 
 exports.getCategories = async (req, res) => {
-    const resPerPage = 4;  // Set the number of categories per page
+    const resPerPage = 4; 
     const apiFeatures = new APIFeatures(Category.find(), req.query).search().filter();
 
-    // Count total categories after applying search/filter
     const categoriesCount = await apiFeatures.query.countDocuments();
 
-    // Apply pagination
     apiFeatures.pagination(resPerPage);
     const categories = await apiFeatures.query;
 

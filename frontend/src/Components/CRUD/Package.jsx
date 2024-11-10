@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,24 +8,21 @@ import MetaData from '../Layout/MetaData';
 
 const Packages = () => {
     const [packages, setPackages] = useState([]);
-    const [newPackage, setNewPackage] = useState({ 
-        name: '', 
-        description: '', 
-        price: 0, 
-        availableDates: [{ startDate: '', endDate: '' }], 
-        locations: [], 
-        features: [], 
-        itinerary: '', 
-        status: 'Available', 
-        images: [], 
-        category: '' 
+    const [categories, setCategories] = useState([]);
+    const [selectedPackage, setSelectedPackage] = useState({});
+    const [newPackage, setNewPackage] = useState({
+        name: '',
+        description: '',
+        price: '',
+        features: '',
+        status: 'Available',
+        category: '',
+        images: [],
+        itinerary: ''  // New itinerary field
     });
     const [updateMode, setUpdateMode] = useState(false);
     const [modalShow, setModalShow] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [selectedPackage, setSelectedPackage] = useState({});
     const navigate = useNavigate();
-    const { id } = useParams();
 
     useEffect(() => {
         const fetchPackages = async () => {
@@ -53,12 +50,16 @@ const Packages = () => {
     const handleNewPackage = async (e) => {
         e.preventDefault();
         const formData = new FormData();
-        Object.keys(newPackage).forEach(key => {
-            if (Array.isArray(newPackage[key])) {
-                newPackage[key].forEach(item => formData.append(key, item));
-            } else {
-                formData.append(key, newPackage[key]);
-            }
+        formData.append('name', newPackage.name);
+        formData.append('description', newPackage.description);
+        formData.append('price', newPackage.price);
+        formData.append('features', newPackage.features);
+        formData.append('status', newPackage.status);
+        formData.append('category', newPackage.category); // Send the category _id
+        formData.append('itinerary', newPackage.itinerary); // Send itinerary field
+
+        newPackage.images.forEach((image) => {
+            formData.append('images', image);
         });
 
         try {
@@ -69,7 +70,16 @@ const Packages = () => {
             });
             setPackages([...packages, res.data.package]);
             toast.success('Package created successfully');
-            setNewPackage({ name: '', description: '', price: 0, availableDates: [{ startDate: '', endDate: '' }], locations: [], features: [], itinerary: '', status: 'Available', images: [], category: '' });
+            setNewPackage({
+                name: '',
+                description: '',
+                price: '',
+                features: '',
+                status: 'Available',
+                category: '',
+                images: [],
+                itinerary: '' // Reset itinerary field
+            });
             setModalShow(false);
         } catch (err) {
             toast.error('Error creating package');
@@ -78,14 +88,21 @@ const Packages = () => {
 
     const handleUpdatePackage = async (e) => {
         e.preventDefault();
+
         const formData = new FormData();
-        Object.keys(selectedPackage).forEach(key => {
-            if (Array.isArray(selectedPackage[key])) {
-                selectedPackage[key].forEach(item => formData.append(key, item));
-            } else {
-                formData.append(key, selectedPackage[key]);
-            }
-        });
+        formData.append('name', selectedPackage.name);
+        formData.append('description', selectedPackage.description);
+        formData.append('price', selectedPackage.price);
+        formData.append('features', selectedPackage.features);
+        formData.append('status', selectedPackage.status);
+        formData.append('category', selectedPackage.category); // Send the category _id
+        formData.append('itinerary', selectedPackage.itinerary); // Send itinerary field
+
+        if (selectedPackage.images) {
+            selectedPackage.images.forEach((image) => {
+                formData.append('images', image);
+            });
+        }
 
         try {
             const res = await axios.put(`http://localhost:5000/api/admin/package/${selectedPackage._id}`, formData, {
@@ -109,24 +126,43 @@ const Packages = () => {
             setSelectedPackage(selectedPkg);
             setUpdateMode(true);
             setModalShow(true);
-            setNewPackage(selectedPkg); // Set form fields with selected package data
+        }
+    };
+
+    const handleDeletePackage = async (rowsDeleted) => {
+        try {
+            const idsToDelete = rowsDeleted.data.map(row => packages[row.dataIndex]._id);
+            await Promise.all(idsToDelete.map(id => axios.delete(`http://localhost:5000/api/admin/package/${id}`)));
+            setPackages(packages.filter(pkg => !idsToDelete.includes(pkg._id)));
+            toast.success('Selected packages deleted successfully');
+        } catch (err) {
+            toast.error('Error deleting packages');
         }
     };
 
     const columns = [
         { name: "name", label: "Package Name" },
-        { 
-            name: "images", 
-            label: "Images",
+        { name: "description", label: "Description" },
+        { name: "price", label: "Price" },
+        { name: "features", label: "Features" },
+        { name: "itinerary", label: "Itinerary" }, // New itinerary column
+        {
+            name: "status", 
+            label: "Status",
             options: {
-                customBodyRender: (images) => (
-                    images.map((img, index) => (
-                        <img key={index} src={img.url} alt="package" style={{ width: '50px', height: '50px', marginRight: '5px' }} />
-                    ))
-                )
+                customBodyRender: (status) => <span>{status}</span>
             }
         },
-        { name: "status", label: "Status" },
+        {
+            name: "category",
+            label: "Category",
+            options: {
+                customBodyRender: (category) => {
+                    return category ? category.name : 'N/A';
+                }
+            }
+        },
+        
         {
             name: "edit",
             label: "Edit",
@@ -145,7 +181,11 @@ const Packages = () => {
 
     const options = {
         filter: false,
-        selectableRows: "none",
+        selectableRows: "multiple",
+        onRowSelectionChange: (currentRowsSelected, allRowsSelected) => {
+            const ids = allRowsSelected.map(row => packages[row.dataIndex]._id);
+        },
+        onRowsDelete: handleDeletePackage,
     };
 
     return (
@@ -153,7 +193,7 @@ const Packages = () => {
             <MetaData title="Packages" />
             <div className="container mt-5">
                 <h1 className="mb-4">Packages</h1>
-                <button className="btn btn-primary mb-4" onClick={() => { setUpdateMode(false); setModalShow(true); }}>
+                <button className="btn btn-primary mb-4" onClick={() => { setNewPackage({ name: '', description: '', price: '', features: '', status: 'Available', category: '', images: [], itinerary: '' }); setUpdateMode(false); setModalShow(true); }}>
                     Add New Package
                 </button>
                 <MUIDataTable
@@ -180,8 +220,8 @@ const Packages = () => {
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                value={newPackage.name}
-                                                onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
+                                                value={updateMode ? selectedPackage.name : newPackage.name}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, name: e.target.value }) : setNewPackage({ ...newPackage, name: e.target.value })}
                                                 placeholder="Package Name"
                                                 required
                                             />
@@ -189,9 +229,9 @@ const Packages = () => {
                                         <div className="form-group">
                                             <textarea
                                                 className="form-control"
-                                                value={newPackage.description}
-                                                onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })}
-                                                placeholder="Package Description"
+                                                value={updateMode ? selectedPackage.description : newPackage.description}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, description: e.target.value }) : setNewPackage({ ...newPackage, description: e.target.value })}
+                                                placeholder="Description"
                                                 required
                                             />
                                         </div>
@@ -199,63 +239,55 @@ const Packages = () => {
                                             <input
                                                 type="number"
                                                 className="form-control"
-                                                value={newPackage.price}
-                                                onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                                                placeholder="Package Price"
+                                                value={updateMode ? selectedPackage.price : newPackage.price}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, price: e.target.value }) : setNewPackage({ ...newPackage, price: e.target.value })}
+                                                placeholder="Price"
                                                 required
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <textarea
+                                                className="form-control"
+                                                value={updateMode ? selectedPackage.features : newPackage.features}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, features: e.target.value }) : setNewPackage({ ...newPackage, features: e.target.value })}
+                                                placeholder="Features"
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <textarea
+                                                className="form-control"
+                                                value={updateMode ? selectedPackage.itinerary : newPackage.itinerary}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, itinerary: e.target.value }) : setNewPackage({ ...newPackage, itinerary: e.target.value })}
+                                                placeholder="Itinerary"
                                             />
                                         </div>
                                         <div className="form-group">
                                             <select
                                                 className="form-control"
-                                                value={newPackage.category}
-                                                onChange={(e) => setNewPackage({ ...newPackage, category: e.target.value })}
-                                                required
+                                                value={updateMode ? selectedPackage.category : newPackage.category}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, category: e.target.value }) : setNewPackage({ ...newPackage, category: e.target.value })}
                                             >
                                                 <option value="">Select Category</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                                {categories.map(category => (
+                                                    <option key={category._id} value={category._id}>
+                                                        {category.name}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>
+                                        {/* Image upload input */}
                                         <div className="form-group">
                                             <input
                                                 type="file"
-                                                className="form-control-file"
-                                                onChange={(e) => {
-                                                    const files = Array.from(e.target.files);
-                                                    setNewPackage({ ...newPackage, images: files });
-                                                }}
+                                                className="form-control"
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, images: [...selectedPackage.images, e.target.files[0]] }) : setNewPackage({ ...newPackage, images: [...newPackage.images, e.target.files[0]] })}
                                                 multiple
                                             />
-                                        </div>
-                                        <div className="form-group">
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                value={newPackage.itinerary}
-                                                onChange={(e) => setNewPackage({ ...newPackage, itinerary: e.target.value })}
-                                                placeholder="Itinerary Details"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <select
-                                                className="form-control"
-                                                value={newPackage.status}
-                                                onChange={(e) => setNewPackage({ ...newPackage, status: e.target.value })}
-                                                required
-                                            >
-                                                <option value="Available">Available</option>
-                                                <option value="Unavailable">Unavailable</option>
-                                            </select>
                                         </div>
                                     </div>
                                     <div className="modal-footer">
                                         <button type="button" className="btn btn-secondary" onClick={() => setModalShow(false)}>Close</button>
-                                        <button type="submit" className="btn btn-primary">
-                                            {updateMode ? 'Update Package' : 'Add Package'}
-                                        </button>
+                                        <button type="submit" className="btn btn-primary">{updateMode ? 'Update Package' : 'Add Package'}</button>
                                     </div>
                                 </form>
                             </div>
