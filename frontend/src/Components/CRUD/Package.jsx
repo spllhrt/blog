@@ -142,10 +142,19 @@ const Packages = () => {
 
     const columns = [
         { name: "name", label: "Package Name" },
+        { 
+            name: "images", 
+            label: "Images",
+            options: {
+                customBodyRender: (images) => (
+                    images.map((img, index) => (
+                        <img key={index} src={img.url} alt="package" style={{ width: '50px', height: '50px', marginRight: '5px' }} />
+                    ))
+                )
+            }
+        },
         { name: "description", label: "Description" },
         { name: "price", label: "Price" },
-        { name: "features", label: "Features" },
-        { name: "itinerary", label: "Itinerary" }, // New itinerary column
         {
             name: "status", 
             label: "Status",
@@ -261,6 +270,17 @@ const Packages = () => {
                                                 placeholder="Itinerary"
                                             />
                                         </div>
+                                        <div className="form-group">
+                                            <select
+                                                className="form-control"
+                                                value={updateMode ? selectedPackage.status : newPackage.status}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, status: e.target.value }) : setNewPackage({ ...newPackage, status: e.target.value })}
+                                            >
+                                                <option value="Available">Available</option>
+                                                <option value="Unavailable">Unavailable</option>
+                                            </select>
+                                        </div>
+
                                         <div className="form-group">
                                             <select
                                                 className="form-control"
