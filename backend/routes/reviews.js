@@ -12,7 +12,7 @@ const {
 // const { isAuthenticatedUser, authorizeRoles } = require('../middlewares/auth');
 
 // Public routes
-router.get('/reviews', getReviews);
+router.get('/admin/reviews', getReviews);
 router.get('/review/:id', getSingleReview);
 
 // Public route for creating a review

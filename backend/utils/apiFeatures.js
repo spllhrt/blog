@@ -3,46 +3,46 @@ class APIFeatures {
         this.query = query;
         this.queryStr = queryStr;
     }
-// http://localhost:2173?keyword=apple&price[]
-// http://localhost:4001/api/v1/products?page=1&keyword=apple&price[lte]=1000&price[gte]=10
+
     search() {
-        const keyword = this.queryStr.keyword ? {
-            name: {
-                $regex: this.queryStr.keyword,
-                $options: 'i'
-            }
-        } : {}
-        // console.log(this.queryStr);
+        const keyword = this.queryStr.keyword
+            ? {
+                  name: {
+                      $regex: this.queryStr.keyword,
+                      $options: 'i',
+                  },
+              }
+            : {};
         this.query = this.query.find({ ...keyword });
         return this;
     }
 
-     filter() {
-
+    filter() {
         const queryCopy = { ...this.queryStr };
-        console.log(queryCopy);
-        // Removing fields from the query
-        const removeFields = ['keyword', 'limit', 'page']
-        removeFields.forEach(el => delete queryCopy[el]);
-        
-        // Advance filter for price, ratings etc
-        let queryStr = JSON.stringify(queryCopy);
-        // console.log(queryCopy.price.gte);
-        queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, match => `$${match}`)
-        this.query = this.query.find(JSON.parse(queryStr));
-        // this.query = this.query.find(JSON.parse(queryStr));
-        // console.log(JSON.parse(queryStr));
-        // this.query = this.query.where('price').gte(queryCopy.price.gte).lte(queryCopy.price.lte)
-        // console.log(this.query)
+    
+        // Removing unnecessary fields
+        const removeFields = ['keyword', 'limit', 'page'];
+        removeFields.forEach((el) => delete queryCopy[el]);
+    
+        // Price filter processing
+        if (queryCopy.price) {
+            queryCopy.price = {
+                ...(queryCopy.price.gte ? { $gte: Number(queryCopy.price.gte) } : {}),
+                ...(queryCopy.price.lte ? { $lte: Number(queryCopy.price.lte) } : {}),
+            };
+        }
+    
+        this.query = this.query.find(queryCopy);
         return this;
     }
+    
 
     pagination(resPerPage) {
         const currentPage = Number(this.queryStr.page) || 1;
         const skip = resPerPage * (currentPage - 1);
-
         this.query = this.query.limit(resPerPage).skip(skip);
         return this;
     }
 }
-module.exports = APIFeatures
+
+module.exports = APIFeatures;

@@ -260,27 +260,17 @@ const Packages = () => {
                                                 value={updateMode ? selectedPackage.features : newPackage.features}
                                                 onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, features: e.target.value }) : setNewPackage({ ...newPackage, features: e.target.value })}
                                                 placeholder="Features"
+                                                required
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <textarea
+                                            <input
+                                                type="file"
                                                 className="form-control"
-                                                value={updateMode ? selectedPackage.itinerary : newPackage.itinerary}
-                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, itinerary: e.target.value }) : setNewPackage({ ...newPackage, itinerary: e.target.value })}
-                                                placeholder="Itinerary"
+                                                multiple
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, images: [...selectedPackage.images, ...e.target.files] }) : setNewPackage({ ...newPackage, images: [...newPackage.images, ...e.target.files] })}
                                             />
                                         </div>
-                                        <div className="form-group">
-                                            <select
-                                                className="form-control"
-                                                value={updateMode ? selectedPackage.status : newPackage.status}
-                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, status: e.target.value }) : setNewPackage({ ...newPackage, status: e.target.value })}
-                                            >
-                                                <option value="Available">Available</option>
-                                                <option value="Unavailable">Unavailable</option>
-                                            </select>
-                                        </div>
-
                                         <div className="form-group">
                                             <select
                                                 className="form-control"
@@ -288,26 +278,24 @@ const Packages = () => {
                                                 onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, category: e.target.value }) : setNewPackage({ ...newPackage, category: e.target.value })}
                                             >
                                                 <option value="">Select Category</option>
-                                                {categories.map(category => (
-                                                    <option key={category._id} value={category._id}>
-                                                        {category.name}
-                                                    </option>
+                                                {categories.map((category) => (
+                                                    <option key={category._id} value={category._id}>{category.name}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        {/* Image upload input */}
                                         <div className="form-group">
-                                            <input
-                                                type="file"
+                                            <textarea
                                                 className="form-control"
-                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, images: [...selectedPackage.images, e.target.files[0]] }) : setNewPackage({ ...newPackage, images: [...newPackage.images, e.target.files[0]] })}
-                                                multiple
+                                                value={updateMode ? selectedPackage.itinerary : newPackage.itinerary}
+                                                onChange={(e) => updateMode ? setSelectedPackage({ ...selectedPackage, itinerary: e.target.value }) : setNewPackage({ ...newPackage, itinerary: e.target.value })}
+                                                placeholder="Itinerary"
+                                                required
                                             />
                                         </div>
                                     </div>
                                     <div className="modal-footer">
                                         <button type="button" className="btn btn-secondary" onClick={() => setModalShow(false)}>Close</button>
-                                        <button type="submit" className="btn btn-primary">{updateMode ? 'Update Package' : 'Add Package'}</button>
+                                        <button type="submit" className="btn btn-primary">{updateMode ? 'Update' : 'Create'} Package</button>
                                     </div>
                                 </form>
                             </div>

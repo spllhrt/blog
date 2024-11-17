@@ -2,26 +2,18 @@ const Category = require('../models/category');
 const cloudinary = require('cloudinary');
 const APIFeatures = require('../utils/apiFeatures');
 
+// In controllers/category.js
+
 exports.getCategories = async (req, res) => {
-    const resPerPage = 4; 
-    const apiFeatures = new APIFeatures(Category.find(), req.query).search().filter();
-
-    const categoriesCount = await apiFeatures.query.countDocuments();
-
-    apiFeatures.pagination(resPerPage);
-    const categories = await apiFeatures.query;
-
-    if (!categories) 
-        return res.status(400).json({ message: 'Error loading categories' });
-
-    return res.status(200).json({
-        success: true,
-        categories,
-        filteredCategoryCount: categoriesCount, // Return the total count for pagination
-        resPerPage,
-        categoriesCount: categories.length // This will return the number of categories on the current page
-    });
-};
+    try {
+      const categories = await Category.find(); // Fetch all categories from the database
+      res.status(200).json({ categories });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };
+  
 
 
 exports.getSingleCategory = async (req, res, next) => {

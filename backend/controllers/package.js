@@ -3,26 +3,28 @@ const Category = require('../models/category');
 const cloudinary = require('cloudinary');
 const APIFeatures = require('../utils/apiFeatures');
 
-// Get all packages with pagination, search, and filter
+// Controller for fetching packages
 exports.getPackages = async (req, res) => {
-    const resPerPage = 4;
-    const apiFeatures = new APIFeatures(Package.find(), req.query).search().filter();
+    try {
+        const resPerPage = 4;
+        const apiFeatures = new APIFeatures(Package.find(), req.query)
+            .search()
+            .filter()
+            .pagination(resPerPage);
 
-    const packagesCount = await apiFeatures.query.countDocuments();
+        const packages = await apiFeatures.query;
+        const packagesCount = await Package.countDocuments();
 
-    apiFeatures.pagination(resPerPage);
-    const packages = await apiFeatures.query;
-
-    if (!packages) 
-        return res.status(400).json({ message: 'Error loading packages' });
-
-    return res.status(200).json({
-        success: true,
-        packages,
-        filteredPackageCount: packagesCount,
-        resPerPage,
-        packagesCount: packages.length
-    });
+        res.status(200).json({
+            success: true,
+            packages,
+            resPerPage,
+            packagesCount
+        });
+    } catch (error) {
+        console.error("Error fetching packages:", error); // Detailed error logging
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 };
 
 // Get a single package by ID

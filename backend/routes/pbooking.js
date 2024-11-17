@@ -1,31 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const upload = require("../utils/multer");
 
-
-const {
-    createBooking,
-    getBookings,         // Make sure these functions are defined and imported correctly
-    getSingleBooking,
-    updateBooking,       // This is likely missing or undefined
-    deleteBooking,
+const { 
+    newBooking, 
+    myBookings, 
+    getBookingById, 
+    allBookings, 
+    deleteBooking, 
+    updateBookingStatus, 
+    totalBookings, 
+    totalRevenue, 
+    revenuePerUser 
 } = require('../controllers/pbooking');
-// Uncomment the line below if you have authentication middleware
-// const { isAuthenticatedUser, authorizeRoles } = require('../middlewares/auth');
 
+// Route for creating a new booking
+router.post('/booking/new', newBooking);
 
-// Public routes
-router.get('/bookings', getBookings);
-router.get('/booking/:id', getSingleBooking);
+// Route for retrieving user's bookings
+router.get('/bookings/me', myBookings);
 
+// Route for retrieving a single booking by ID
+router.get('/booking/:id', getBookingById);
 
-// Admin routes for creating, updating, and deleting bookings
-router.post('/admin/booking/new', createBooking);
-router.get('/admin/booking/:id', getSingleBooking);
-router.patch('/admin/booking/:id', updateBooking);
+// Admin routes
+router.get('/admin/bookings', allBookings);
 router.route('/admin/booking/:id')
-    .patch(updateBooking)
-    .delete(deleteBooking);
+    .delete(deleteBooking)
+    .put(updateBookingStatus);
 
+// Aggregated data routes (Admin only)
+router.get('/admin/total-bookings', totalBookings);
+router.get('/admin/total-revenue', totalRevenue);
+router.get('/admin/revenue-per-user', revenuePerUser);
 
 module.exports = router;

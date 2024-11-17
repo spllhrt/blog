@@ -1,26 +1,19 @@
 const mongoose = require('mongoose');
 
-
 const bookingSchema = new mongoose.Schema({
-    userId: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: [true, 'Please provide user ID for the booking'],
+        required: true,
+        ref: 'User'
     },
     packageId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Package', // Assuming you have a Package model
-        required: [true, 'Please provide package ID for the booking'],
+        ref: 'Package',
+        required: true,
     },
     travelDates: {
-        startDate: {
-            type: Date,
-            required: [true, 'Please provide the start date of the trip'],
-        },
-        endDate: {
-            type: Date,
-            required: [true, 'Please provide the end date of the trip'],
-        }
+        type: Date,
+        required: [true, 'Please provide the start date of the trip'],
     },
     numberOfTravelers: {
         type: Number,
@@ -28,9 +21,9 @@ const bookingSchema = new mongoose.Schema({
         min: [1, 'Number of travelers must be at least 1'],
     },
     packagePrice: {
-      type: Number,
-      required: true,
-      default: 0.0
+        type: Number,
+        required: true,
+        default: 0.0
     },
     totalPrice: {
         type: Number,
@@ -39,8 +32,8 @@ const bookingSchema = new mongoose.Schema({
     },
     bookingStatus: {
         type: String,
-        enum: ['confirmed', 'pending', 'canceled'], // Possible statuses
-        default: 'pending', // Default status
+        enum: ['confirmed', 'pending', 'canceled'],
+        default: 'pending',
     },
     createdAt: {
         type: Date,
@@ -48,5 +41,10 @@ const bookingSchema = new mongoose.Schema({
     }
 });
 
+// Middleware to calculate totalPrice
+bookingSchema.pre('save', function(next) {
+    this.totalPrice = this.packagePrice * this.numberOfTravelers;
+    next();
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);

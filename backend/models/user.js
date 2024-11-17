@@ -5,11 +5,13 @@ const jwt = require('jsonwebtoken');
 
 const Schema = mongoose.Schema;
 
+// Define User schema
 const userSchema = new Schema({
     name: {
         type: String,
-        required: [true, 'Please enter your name'],
-        maxLength: [30, 'Your name cannot exceed 30 characters']
+        required: [false, 'Please enter your name'],
+        maxLength: [30, 'Your name cannot exceed 30 characters'],
+        // This will be used for normal logins.
     },
     email: {
         type: String,
@@ -19,8 +21,9 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        required: [true, 'Please enter your password'],
-        minlength: [6, 'Your password must be longer than 6 characters'],
+    },
+    profileImage: {
+        type: String, // For Google login users to store their profile image URL
     },
     role: {
         type: String,
@@ -41,24 +44,44 @@ const userSchema = new Schema({
 });
 
 
+
+
+// Pre-save hook for password hashing before saving normal users (not Google users)
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
-        return next(); 
+        return next();
     }
 
-    this.password = await bcrypt.hash(this.password, 10);
-    next(); 
+
+
+
+    // Only hash the password if it is provided (for normal users)
+    if (this.password) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+    next();
 });
 
+
+
+
+// JWT generation method
 userSchema.methods.getJwtToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRES_TIME
     });
-}
+};
 
+
+
+
+// Compare password method (for normal users)
 userSchema.methods.comparePassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password)
-}
+    return await bcrypt.compare(enteredPassword, this.password);
+};
 
 
+
+
+// Export the model
 module.exports = mongoose.model('User', userSchema);
